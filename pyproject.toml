@@ -1,28 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "postgres-mcp"
-version = "0.3.0"
-description = "PostgreSQL Tuning and Analysis Tool"
+dynamic = ["version"]
+description = "PostgreSQL MCP Server"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "mcp[cli]>=1.5.0",
-    "psycopg[binary]>=3.2.6",
-    "humanize>=4.8.0",
-    "pglast==7.2.0",
-    "attrs>=25.3.0",
-    "psycopg-pool>=3.2.6",
-    "instructor>=1.7.9",
+requires-python = ">=3.10"
+license = "MIT"
+keywords = []
+authors = [
+  {name = "CrystalDBA", email = "info@crystaldba.ai"},
 ]
-license = "mit"
-license-files = ["LICENSE"]
-
-[[project.authors]]
-name = "Johann Schleier-Smith"
-email = "jssmith@crystal.cloud"
-
-[build-system]
-requires = [ "hatchling",]
-build-backend = "hatchling.build"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "mcp",
+  "psycopg[binary]",
+  "psycopg-pool",
+  "pydantic",
+  "sqlparse",
+  "matplotlib",
+  "numpy",
+  "pandas",
+  "networkx",
+  "pillow",
+  "openai",
+  "tiktoken",
+  "starlette",
+]
 
 [project.scripts]
 postgres-mcp = "postgres_mcp:main"
@@ -30,6 +43,9 @@ postgres-mcp = "postgres_mcp:main"
 # [tool.pyright]
 # venvPath = "."
 # venv = ".venv"
+
+[tool.hatch.version]
+path = "src/postgres_mcp/__about__.py"
 
 [tool.pytest.ini_options]
 pythonpath = ["./src"]

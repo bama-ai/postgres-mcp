@@ -243,6 +243,37 @@ For example, in Cursor's `mcp.json` or Cline's `cline_mcp_settings.json` you can
 }
 ```
 
+### Authentication for SSE Transport
+
+Postgres MCP Pro supports token-based authentication for the SSE transport. To enable authentication, start the server with the `--auth-token` option:
+
+```bash
+docker run -p 8000:8000 \
+  -e DATABASE_URI=postgresql://username:password@localhost:5432/dbname \
+  crystaldba/postgres-mcp --transport=sse --auth-token=your-secret-token
+```
+
+Clients must then include the token as a query parameter when connecting to the SSE endpoint:
+
+```
+http://localhost:8000/sse?token=your-secret-token
+```
+
+In your MCP client configuration, you would include the token in the URL:
+
+```json
+{
+    "mcpServers": {
+        "postgres": {
+            "type": "sse",
+            "url": "http://localhost:8000/sse?token=your-secret-token"
+        }
+    }
+}
+```
+
+If no auth token is provided when starting the server, authentication will be disabled.
+
 For Windsurf, the format in `mcp_config.json` is slightly different:
 
 ```json

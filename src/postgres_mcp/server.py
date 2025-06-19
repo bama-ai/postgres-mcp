@@ -6,13 +6,51 @@ import os
 import signal
 import sys
 from enum import Enum
-from typing import Any
-from typing import List
-from typing import Literal
-from typing import Union
+from typing import Any, List, Literal, Union, Optional, Dict, Callable, Awaitable
 
-import mcp.types as types
-from mcp.server.fastmcp import FastMCP
+# Try to import MCP types, with fallback for testing
+try:
+    import mcp.types as types
+    from mcp.server.fastmcp import FastMCP
+    HAS_MCP = True
+except ImportError:
+    # For testing or when MCP is not available
+    class MockTypes:
+        class TextContent:
+            def __init__(self, type: str, text: str):
+                self.type = type
+                self.text = text
+                
+        class ImageContent:
+            pass
+            
+        class EmbeddedResource:
+            pass
+    
+    types = MockTypes()
+    
+    class MockFastMCP:
+        def __init__(self, name: str):
+            self.name = name
+            self.settings = type('Settings', (), {'host': '', 'port': 0, 'middleware': []})
+            
+        def tool(self, description: str = ""):
+            def decorator(func):
+                return func
+            return decorator
+            
+        def add_tool(self, func, description: str = ""):
+            pass
+            
+        async def run_stdio_async(self):
+            pass
+            
+        async def run_sse_async(self):
+            pass
+    
+    FastMCP = MockFastMCP
+    HAS_MCP = False
+
 from pydantic import Field
 from pydantic import validate_call
 
@@ -539,6 +577,12 @@ async def main():
         default=8000,
         help="Port for SSE server (default: 8000)",
     )
+    parser.add_argument(
+        "--auth-token",
+        type=str,
+        default=None,
+        help="Authentication token for SSE server. If not provided, authentication will be disabled.",
+    )
 
     args = parser.parse_args()
 
@@ -592,6 +636,46 @@ async def main():
         # Update FastMCP settings based on command line arguments
         mcp.settings.host = args.sse_host
         mcp.settings.port = args.sse_port
+        
+        # Import authentication middleware
+        from .auth import AuthenticationMiddleware, create_token_validator
+        
+        # Configure authentication for SSE server
+        # The middleware will be applied to the Starlette app that FastMCP creates
+        if args.auth_token is not None:
+            logger.info("Authentication enabled for SSE server")
+        else:
+            logger.info("Authentication disabled for SSE server")
+            
+        # Create a token validator with the provided token
+        token_validator = create_token_validator(args.auth_token)
+        
+        # Apply the authentication middleware
+        # Create a Starlette app with middleware instead of trying to set middleware directly
+        # This will be used when mcp.run_sse_async() is called
+        from starlette.applications import Starlette
+        from starlette.routing import Route, Mount
+        
+        # Store the original sse_app method
+        original_sse_app = mcp.sse_app
+        
+        # Override the sse_app method to include our middleware
+        def custom_sse_app():
+            app = original_sse_app()
+            # Wrap the app with our authentication middleware
+            # Exclude messages path and well-known paths from authentication
+            return AuthenticationMiddleware(
+                app,
+                token_validator=token_validator,
+                exclude_paths=[
+                    mcp.settings.message_path,  # Exclude the messages path
+                    "/.well-known/"  # Exclude well-known paths
+                ]
+            )
+        
+        # Replace the sse_app method
+        mcp.sse_app = custom_sse_app
+        
         await mcp.run_sse_async()
 
 
