@@ -93,6 +93,7 @@ class AccessMode(str, Enum):
 # Global variables
 db_connection = DbConnPool()
 current_access_mode = AccessMode.UNRESTRICTED
+current_output_format = "text"  # Default format
 shutdown_in_progress = False
 
 
@@ -110,7 +111,24 @@ async def get_sql_driver() -> Union[SqlDriver, SafeSqlDriver]:
 
 def format_text_response(text: Any) -> ResponseType:
     """Format a text response."""
-    return [types.TextContent(type="text", text=str(text))]
+    if current_output_format == "json":
+        import json
+        from decimal import Decimal
+        
+        def decimal_serializer(obj):
+            """Custom JSON serializer for Decimal objects."""
+            if isinstance(obj, Decimal):
+                return str(obj)
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        
+        # Convert to JSON format
+        if isinstance(text, (list, dict)):
+            json_text = json.dumps(text, indent=2, ensure_ascii=False, default=decimal_serializer)
+        else:
+            json_text = str(text)
+        return [types.TextContent(type="text", text=json_text)]
+    else:
+        return [types.TextContent(type="text", text=str(text))]
 
 
 def format_error_response(error: str) -> ResponseType:
@@ -583,12 +601,20 @@ async def main():
         default=None,
         help="Authentication token for SSE server. If not provided, authentication will be disabled.",
     )
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=["text", "json"],
+        default="text",
+        help="Output format: text (default) or json",
+    )
 
     args = parser.parse_args()
 
-    # Store the access mode in the global variable
-    global current_access_mode
+    # Store the access mode and output format in global variables
+    global current_access_mode, current_output_format
     current_access_mode = AccessMode(args.access_mode)
+    current_output_format = args.format
 
     # Add the query tool with a description appropriate to the access mode
     if current_access_mode == AccessMode.UNRESTRICTED:
