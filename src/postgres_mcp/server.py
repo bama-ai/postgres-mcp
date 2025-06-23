@@ -114,16 +114,19 @@ def format_text_response(text: Any) -> ResponseType:
     if current_output_format == "json":
         import json
         from decimal import Decimal
+        from datetime import datetime, date, time
         
-        def decimal_serializer(obj):
-            """Custom JSON serializer for Decimal objects."""
+        def custom_serializer(obj):
+            """Custom JSON serializer for non-serializable objects."""
             if isinstance(obj, Decimal):
                 return str(obj)
+            elif isinstance(obj, (datetime, date, time)):
+                return obj.isoformat()
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
         
         # Convert to JSON format
         if isinstance(text, (list, dict)):
-            json_text = json.dumps(text, indent=2, ensure_ascii=False, default=decimal_serializer)
+            json_text = json.dumps(text, indent=2, ensure_ascii=False, default=custom_serializer)
         else:
             json_text = str(text)
         return [types.TextContent(type="text", text=json_text)]
