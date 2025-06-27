@@ -49,7 +49,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         # Check for token in query parameters
         token = request.query_params.get('token')
-        print("🚀 ~ file: auth.py:52 ~ token:", token, request.url)
+        print("url:", token, request.url)
         
         if not token:
             logger.warning(f"Authentication failed: No token provided for {request.url.path}")

@@ -972,7 +972,7 @@ class SafeSqlDriver(SqlDriver):
                 raise ValueError(f"Error validating query: {query}") from e
 
         except pglast.parser.ParseError as e:
-            raise ValueError("Failed to parse SQL statement") from e
+            raise ValueError(f"Failed to parse SQL statement: {query}") from e
 
     async def execute_query(
         self,
